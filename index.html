@@ -48,7 +48,7 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         // Initialize the map
-        const map = L.map('map').setView([49.2551575, 13.9163047], 15);
+        const map = L.map('map').setView([49.1658575, 13.8857578], 15);
 
         // Add a tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -57,8 +57,8 @@
 
         // Define the initial player's starting point and size of each section
         const sectionSize = 0.003; // approximately 1 km x 1 km
-        let playerStartLat = 49.2551575;
-        let playerStartLng = 13.9163047;
+        let playerStartLat = 49.1658575;
+        let playerStartLng = 13.8857578;
 
         // Store all sections in an object for easy lookup
         const sections = {};
