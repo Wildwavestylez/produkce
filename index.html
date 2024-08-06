@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Game</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+        }
+        #buildingMenu, #resourceInfo {
+            position: absolute;
+            top: 10px;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            z-index: 1000;
+        }
+        #buildingMenu {
+            left: 10px;
+        }
+        #resourceInfo {
+            right: 10px;
+        }
+        .buildingButton {
+            margin: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .resource {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="buildingMenu">
+        <button class="buildingButton" data-building="house">Build House</button>
+        <button class="buildingButton" data-building="farm">Build Farm</button>
+        <button class="buildingButton" data-building="factory">Build Factory</button>
+    </div>
+    <div id="resourceInfo">
+        <div class="resource">Wood: <span id="woodCount">0</span></div>
+        <div class="resource">Food: <span id="foodCount">0</span></div>
+        <div class="resource">Goods: <span id="goodsCount">0</span></div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([51.505, -0.09], 13);
+
+        // Add a tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Define the initial player's starting point and size of each section
+        const sectionSize = 0.01; // approximately 1 km x 1 km
+        let playerStartLat = 51.505;
+        let playerStartLng = -0.09;
+
+        // Store all sections in an object for easy lookup
+        const sections = {};
+
+        // Store all buildings
+        const buildings = [];
+
+        // Initialize resources
+        const resources = {
+            wood: 0,
+            food: 0,
+            goods: 0
+        };
+
+        // Function to update resource counts in the UI
+        function updateResourceUI() {
+            document.getElementById('woodCount').textContent = resources.wood;
+            document.getElementById('foodCount').textContent = resources.food;
+            document.getElementById('goodsCount').textContent = resources.goods;
+        }
+
+        // Create a function to add sections
+        function addSection(lat, lng, unlocked = false) {
+            const bounds = [
+                [lat, lng],
+                [lat + sectionSize, lng + sectionSize]
+            ];
+            const section = L.rectangle(bounds, {
+                color: unlocked ? "green" : "red",
+                weight: 1
+            }).addTo(map);
+            section.unlocked = unlocked;
+            section.lat = lat;
+            section.lng = lng;
+
+            // Store section in the sections object
+            const key = `${lat},${lng}`;
+            sections[key] = section;
+
+            // Unlock section on click if it is locked
+            section.on('click', () => {
+                if (!section.unlocked) {
+                    unlockSection(section);
+                }
+            });
+        }
+
+        // Unlock a section
+        function unlockSection(section) {
+            const unlockCost = 10; // Example cost to unlock a section
+            if (resources.goods >= unlockCost && confirm('Do you want to unlock this section?')) {
+                resources.goods -= unlockCost;
+                updateResourceUI();
+                section.setStyle({ color: 'green' });
+                section.unlocked = true;
+                // Add new sections around the unlocked section
+                const lat = section.lat;
+                const lng = section.lng;
+                addNewSectionsAround(lat, lng);
+            } else {
+                alert('Not enough goods to unlock this section.');
+            }
+        }
+
+        // Add new sections around a given section
+        function addNewSectionsAround(lat, lng) {
+            const directions = [
+                [sectionSize, 0],
+                [-sectionSize, 0],
+                [0, sectionSize],
+                [0, -sectionSize]
+            ];
+            directions.forEach(([dLat, dLng]) => {
+                const newLat = lat + dLat;
+                const newLng = lng + dLng;
+                const key = `${newLat},${newLng}`;
+                if (!sections[key]) {
+                    addSection(newLat, newLng);
+                }
+            });
+        }
+
+        // Add initial section where the player starts
+        addSection(playerStartLat, playerStartLng, true);
+
+        // Add some locked sections around the initial section
+        addNewSectionsAround(playerStartLat, playerStartLng);
+
+        // Handle building placement
+        let selectedBuilding = null;
+
+        document.querySelectorAll('.buildingButton').forEach(button => {
+            button.addEventListener('click', () => {
+                selectedBuilding = button.getAttribute('data-building');
+                alert(`Selected building: ${selectedBuilding}`);
+            });
+        });
+
+        map.on('click', (e) => {
+            if (selectedBuilding) {
+                placeBuilding(e.latlng, selectedBuilding);
+                selectedBuilding = null; // Reset the selection
+            }
+        });
+
+        function placeBuilding(latlng, buildingType) {
+            const building = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-icon',
+                    html: `<div class="building-icon ${buildingType}">${buildingType}</div>`
+                })
+            }).addTo(map);
+            buildings.push({
+                type: buildingType,
+                latlng: latlng
+            });
+
+            // Update resource production based on building type
+            switch (buildingType) {
+                case 'house':
+                    // Houses do not produce resources but might increase population in the future
+                    break;
+                case 'farm':
+                    resources.food += 1;
+                    break;
+                case 'factory':
+                    // Factories produce goods every 10 seconds
+                    setInterval(() => {
+                        resources.goods += 1;
+                        updateResourceUI();
+                    }, 4000);
+                    break;
+            }
+
+            updateResourceUI();
+        }
+
+        // Initial resource UI update
+        updateResourceUI();
+
+        // Further code will include more detailed resource management and production rates.
+    </script>
+</body>
+</html>
