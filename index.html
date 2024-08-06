@@ -56,9 +56,9 @@
         }).addTo(map);
 
         // Define the initial player's starting point and size of each section
-        const sectionSize = 0.01; // approximately 1 km x 1 km
-        let playerStartLat = 51.505;
-        let playerStartLng = -0.09;
+        const sectionSize = 0.005; // approximately 1 km x 1 km
+        let playerStartLat = 49.2551575;
+        let playerStartLng = 13.9163047;
 
         // Store all sections in an object for easy lookup
         const sections = {};
@@ -108,7 +108,7 @@
 
         // Unlock a section
         function unlockSection(section) {
-            const unlockCost = 10; // Example cost to unlock a section
+            const unlockCost = 20; // Example cost to unlock a section
             if (resources.goods >= unlockCost && confirm('Do you want to unlock this section?')) {
                 resources.goods -= unlockCost;
                 updateResourceUI();
