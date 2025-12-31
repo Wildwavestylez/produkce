@@ -4,8 +4,8 @@ module.exports = {
   MODE: "PAPER", // PAPER | LIVE
 
   BYBIT: {
-    API_KEY: "TVŮJ_API_KEY",
-    API_SECRET: "TVŮJ_API_SECRET",
+   API_KEY = "9RJmc0mm0GRjA8YQbK",
+   API_SECRET = "sPOAoHzlp8Wxc7E9fCD2mzqfx1gr9U75hOYz",
     BASE_URL: "https://api.bybit.com",
     RECV_WINDOW: "5000"
   },
