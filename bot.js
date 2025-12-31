@@ -68,4 +68,4 @@ async function scanMarket() {
 
 // Spouštíme každých 5 minut
 scanMarket();
-setInterval(scanMarket, 5*60*1000);
+setInterval(scanMarket, 3*60*1000);
