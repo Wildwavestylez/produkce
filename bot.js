@@ -1,7 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 
 // tvůj token a chat ID
-const BOT_TOKEN = "8030561920:AAG4-f_SWSNQQ8O11CjnhsJdEUnmVZev7k";
+const BOT_TOKEN = "8030561920:AAG4-f_SWSNQQ8O11CjnhsJdEUnmVZev7kA";
 const CHAT_ID = -5154393188;
 
 // vytvoření bota s bezpečnějším timeoutem
