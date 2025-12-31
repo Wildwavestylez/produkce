@@ -15,7 +15,8 @@ const RISK_MODE = "LIVE";
 const LEVERAGE = 10;
 const MARGIN_PER_TRADE = 30; // USDT
 const TIMEFRAMES = ["5", "15", "60"]; // minuty
-
+const activeTrades = new Set();
+const COOLDOWN_MS = 15 * 60 * 1000; // 15 minut
 /* ========================================== */
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
