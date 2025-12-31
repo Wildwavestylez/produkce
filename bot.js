@@ -12,10 +12,18 @@ async function testConnection() {
   }
 }
 
+
+// bot.js
+
+const { sendMessage } = require("./telegram/notifier");
+
 async function loop() {
   console.log("🔄 Bot loop start | MODE:", MODE);
-  // zatím jen test spojení
   await testConnection();
+
+  // TEST zpráva do Telegramu
+  await sendMessage("🟢 Bot je online | Mode: " + MODE);
+
   console.log("✅ Loop hotovo");
 }
 
