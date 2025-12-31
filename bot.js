@@ -11,9 +11,9 @@ const CHAT_ID = -1003310381850; // tvoje skupina
 const BYBIT_API_KEY = "9RJmc0mm0GRjA8YQbK";
 const BYBIT_API_SECRET = "sPOAoHzlp8Wxc7E9fCD2mzqfx1gr9U75hOYz";
 
-const LEVERAGE = 5;        // připraveno do budoucna
-const RISK_MODE = "PAPER"; // PAPER | LIVE
-
+const RISK_MODE = "LIVE";
+const LEVERAGE = 10;
+const MARGIN_PER_TRADE = 30; // USDT
 const TIMEFRAMES = ["5", "15", "60"]; // minuty
 
 /* ========================================== */
@@ -88,38 +88,108 @@ function analyze(closes) {
   return null;
 }
 
+async function placeOrder(symbol, side) {
+  const timestamp = Date.now().toString();
+
+  const body = {
+    category: "linear",
+    symbol,
+    side: side === "BUY" ? "Buy" : "Sell",
+    orderType: "Market",
+    qty: MARGIN_PER_TRADE * LEVERAGE,
+    timeInForce: "IOC"
+  };
+
+  const payload = timestamp + BYBIT_API_KEY + JSON.stringify(body);
+  const signature = crypto
+    .createHmac("sha256", BYBIT_API_SECRET)
+    .update(payload)
+    .digest("hex");
+
+  const res = await axios.post(
+    "https://api.bybit.com/v5/order/create",
+    body,
+    {
+      headers: {
+        "X-BAPI-API-KEY": BYBIT_API_KEY,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  return res.data;
+}
+
 /* ================= SCANNER ================= */
 
 async function scan() {
   console.log("🔍 Scan start");
-  const symbols = await getSymbols();
+
+  let symbols;
+  try {
+    symbols = await getSymbols();
+  } catch (e) {
+    console.log("❌ Nelze načíst symboly");
+    return;
+  }
 
   for (const symbol of symbols) {
+
+    if (activeTrades.has(symbol)) continue;
+
     for (const tf of TIMEFRAMES) {
       try {
         const closes = await getKlines(symbol, tf);
         const signal = analyze(closes);
 
-        if (signal) {
-          const msg =
+        if (!signal) continue;
+
+        const message =
 `📊 ${symbol}
 ⏱ TF: ${tf}m
 📌 SIGNAL: ${signal}
 ⚙ Mode: ${RISK_MODE}
 ⚖ Leverage: ${LEVERAGE}x`;
 
-          await bot.sendMessage(CHAT_ID, msg);
-          console.log("ALERT:", symbol, tf, signal);
+        await bot.sendMessage(CHAT_ID, message);
+
+        if (RISK_MODE === "LIVE") {
+          try {
+            await placeOrder(symbol, signal);
+            activeTrades.add(symbol);
+
+            await bot.sendMessage(
+              CHAT_ID,
+              `🚀 OBCHOD OTEVŘEN
+${symbol}
+Směr: ${signal}`
+            );
+
+            setTimeout(() => {
+              activeTrades.delete(symbol);
+            }, COOLDOWN_MS);
+
+          } catch (orderErr) {
+            await bot.sendMessage(
+              CHAT_ID,
+              `❌ CHYBA PŘI OBCHODU
+${symbol}`
+            );
+            console.log("Order error:", orderErr.message);
+          }
         }
+
+        break; // po signálu už neřeší další TF
       } catch (e) {
-        console.log("Skip:", symbol, tf);
+        continue;
       }
     }
   }
 
   console.log("✅ Scan hotovo");
 }
-
 /* ================= LOOP ================= */
 
 scan();
