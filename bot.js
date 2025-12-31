@@ -1,71 +1,126 @@
-const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
+const TelegramBot = require("node-telegram-bot-api");
+const crypto = require("crypto");
+const { RSI, EMA, MACD, BollingerBands } = require("technicalindicators");
 
-// ==== TELEGRAM ====
+/* ================= KONFIG ================= */
+
 const BOT_TOKEN = "8275170048:AAHtG2UvG3KiBdKX7dIfivxWuk1EOiNpX0s";
-const CHAT_ID = -1003310381850; // nové chat ID
-const bot = new TelegramBot(BOT_TOKEN, { polling: false, request: { timeout: 10000 } });
+const CHAT_ID = -1003310381850; // tvoje skupina
 
-// ==== BYBIT API ====
-const BASE_URL = "https://api.bybit.com";
+const BYBIT_API_KEY = "9RJmc0mm0GRjA8YQbK";
+const BYBIT_API_SECRET = "sPOAoHzlp8Wxc7E9fCD2mzqfx1gr9U75hOYz";
 
-// TF, které chceme sledovat
+const LEVERAGE = 5;        // připraveno do budoucna
+const RISK_MODE = "PAPER"; // PAPER | LIVE
+
 const TIMEFRAMES = ["5", "15", "60"]; // minuty
 
-// RSI funkce
-function calculateRSI(closes, period = 14) {
-  if (closes.length < period + 1) return null;
-  let gains = 0, losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[i] - closes[i-1];
-    if (diff >= 0) gains += diff;
-    else losses -= diff;
-  }
-  let rs = gains / losses || 0;
-  return 100 - 100 / (1 + rs);
+/* ========================================== */
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+const client = axios.create({
+  baseURL: "https://api.bybit.com",
+  timeout: 10000
+});
+
+/* ================= BYBIT ================= */
+
+async function getSymbols() {
+  const res = await client.get("/v5/market/instruments-info", {
+    params: { category: "linear" }
+  });
+  return res.data.result.list
+    .filter(s => s.symbol.endsWith("USDT"))
+    .map(s => s.symbol);
 }
 
-// SMA funkce
-function calculateSMA(closes, period = 20) {
-  if (closes.length < period) return null;
-  const sum = closes.slice(-period).reduce((a,b) => a+b, 0);
-  return sum / period;
+async function getKlines(symbol, interval) {
+  const res = await client.get("/v5/market/kline", {
+    params: {
+      category: "linear",
+      symbol,
+      interval,
+      limit: 100
+    }
+  });
+  return res.data.result.list
+    .reverse()
+    .map(c => parseFloat(c[4])); // close
 }
 
-// ==== Hlavní loop ====
-async function scanMarket() {
-  try {
-    // 1️⃣ Fetch trading symbols
-    const resp = await axios.get(`${BASE_URL}/v2/public/symbols`);
-    const symbols = resp.data.result.map(s => s.name); // např. BTCUSDT, ETHUSDT
+/* ================= ANALÝZA ================= */
 
-    for (let symbol of symbols) {
-      for (let tf of TIMEFRAMES) {
-        // 2️⃣ Fetch historické svíčky
-        const candles = await axios.get(`${BASE_URL}/v2/public/kline/list`, {
-          params: { symbol, interval: tf, limit: 50 }
-        });
+function analyze(closes) {
+  if (closes.length < 50) return null;
 
-        const closes = candles.data.result.map(c => parseFloat(c.close));
+  const rsi = RSI.calculate({ values: closes, period: 14 }).slice(-1)[0];
+  const emaFast = EMA.calculate({ values: closes, period: 9 }).slice(-1)[0];
+  const emaSlow = EMA.calculate({ values: closes, period: 21 }).slice(-1)[0];
+  const macd = MACD.calculate({
+    values: closes,
+    fastPeriod: 12,
+    slowPeriod: 26,
+    signalPeriod: 9
+  }).slice(-1)[0];
 
-        // 3️⃣ Počítáme indikátory
-        const rsi = calculateRSI(closes);
-        const sma = calculateSMA(closes);
+  const bb = BollingerBands.calculate({
+    values: closes,
+    period: 20,
+    stdDev: 2
+  }).slice(-1)[0];
 
-        // 4️⃣ Jednoduchá podmínka: RSI < 30 a cena nad SMA = buy signál
-        const price = closes[closes.length - 1];
-        if (rsi !== null && sma !== null && rsi < 30 && price > sma) {
-          const msg = `📈 BUY signal\nPair: ${symbol}\nTF: ${tf}m\nPrice: ${price}\nRSI: ${rsi.toFixed(2)}\nSMA: ${sma.toFixed(2)}`;
+  const price = closes.at(-1);
+
+  if (
+    rsi < 30 &&
+    emaFast > emaSlow &&
+    price < bb.lower
+  ) return "BUY";
+
+  if (
+    rsi > 70 &&
+    emaFast < emaSlow &&
+    price > bb.upper
+  ) return "SELL";
+
+  return null;
+}
+
+/* ================= SCANNER ================= */
+
+async function scan() {
+  console.log("🔍 Scan start");
+  const symbols = await getSymbols();
+
+  for (const symbol of symbols) {
+    for (const tf of TIMEFRAMES) {
+      try {
+        const closes = await getKlines(symbol, tf);
+        const signal = analyze(closes);
+
+        if (signal) {
+          const msg =
+`📊 ${symbol}
+⏱ TF: ${tf}m
+📌 SIGNAL: ${signal}
+⚙ Mode: ${RISK_MODE}
+⚖ Leverage: ${LEVERAGE}x`;
+
           await bot.sendMessage(CHAT_ID, msg);
-          console.log(msg);
+          console.log("ALERT:", symbol, tf, signal);
         }
+      } catch (e) {
+        console.log("Skip:", symbol, tf);
       }
     }
-  } catch (err) {
-    console.error("Chyba při skenování:", err.message);
   }
+
+  console.log("✅ Scan hotovo");
 }
 
-// Spouštíme každých 5 minut
-scanMarket();
-setInterval(scanMarket, 3*60*1000);
+/* ================= LOOP ================= */
+
+scan();
+setInterval(scan, 5 * 60 * 1000); // každých 5 minut
