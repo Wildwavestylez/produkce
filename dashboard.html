@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Bot Dashboard</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #1e1e2f;
+    color: #f0f0f0;
+    padding: 20px;
+  }
+  h1 { text-align: center; color: #ffcc00; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    padding: 10px;
+    border: 1px solid #444;
+    text-align: center;
+  }
+  th { background-color: #222; }
+  tr:nth-child(even) { background-color: #2a2a3d; }
+  .BUY { background-color: #0f6; color: #000; font-weight: bold; }
+  .SELL { background-color: #f33; color: #fff; font-weight: bold; }
+  .PAPER { background-color: #66f; color: #fff; font-weight: bold; }
+  .LIVE { background-color: #ff0; color: #000; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>Crypto Bot Dashboard</h1>
+
+<div>
+  <table id="dashboardTable">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Timeframe</th>
+        <th>Signal</th>
+        <th>Active Trades</th>
+        <th>Mode</th>
+        <th>Last Scan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="6">Načítám data...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const JSON_URL = 'status.json'; // cesta k tvému JSON souboru
+
+async function loadData() {
+  try {
+    const res = await fetch(JSON_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error('Chyba při načítání JSON');
+    const data = await res.json();
+    
+    const tbody = document.querySelector('#dashboardTable tbody');
+    tbody.innerHTML = '';
+
+    const trades = data.activeTrades.length > 0 ? data.activeTrades.join(', ') : '-';
+
+    const row = document.createElement('tr');
+
+    row.innerHTML = `
+      <td>${data.currentSymbol || '-'}</td>
+      <td>${data.timeframe || '-'}</td>
+      <td class="${data.signal || ''}">${data.signal || '-'}</td>
+      <td>${trades}</td>
+      <td class="${data.mode || ''}">${data.mode || '-'}</td>
+      <td>${data.lastScan ? new Date(data.lastScan).toLocaleTimeString() : '-'}</td>
+    `;
+    
+    tbody.appendChild(row);
+
+  } catch (err) {
+    console.error(err);
+    const tbody = document.querySelector('#dashboardTable tbody');
+    tbody.innerHTML = `<tr><td colspan="6">Chyba při načítání dat</td></tr>`;
+  }
+}
+
+// inicialní načtení
+loadData();
+
+// aktualizace každých 10 sekund
+setInterval(loadData, 10000);
+</script>
+</body>
+</html>
