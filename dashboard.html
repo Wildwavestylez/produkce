@@ -12,17 +12,23 @@
     padding: 20px;
   }
   h1 { text-align: center; color: #ffcc00; }
+  #tableContainer {
+    max-height: 500px;
+    overflow-y: auto;
+    margin-top: 20px;
+    border: 1px solid #444;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
   }
   th, td {
-    padding: 10px;
+    padding: 8px;
     border: 1px solid #444;
     text-align: center;
+    font-size: 14px;
   }
-  th { background-color: #222; }
+  th { background-color: #222; position: sticky; top: 0; z-index: 1; }
   tr:nth-child(even) { background-color: #2a2a3d; }
   .BUY { background-color: #0f6; color: #000; font-weight: bold; }
   .SELL { background-color: #f33; color: #fff; font-weight: bold; }
@@ -33,16 +39,16 @@
 <body>
 <h1>Crypto Bot Dashboard</h1>
 
-<div>
+<div id="tableContainer">
   <table id="dashboardTable">
     <thead>
       <tr>
         <th>Symbol</th>
         <th>Timeframe</th>
         <th>Signal</th>
-        <th>Active Trades</th>
         <th>Mode</th>
-        <th>Last Scan</th>
+        <th>Price</th>
+        <th>Timestamp</th>
       </tr>
     </thead>
     <tbody>
@@ -52,31 +58,33 @@
 </div>
 
 <script>
-const JSON_URL = 'status.json'; // cesta k tvému JSON souboru
+const JSON_URL = 'status.json';
 
 async function loadData() {
   try {
     const res = await fetch(JSON_URL + '?t=' + Date.now());
     if (!res.ok) throw new Error('Chyba při načítání JSON');
     const data = await res.json();
-    
+
     const tbody = document.querySelector('#dashboardTable tbody');
-    tbody.innerHTML = '';
 
-    const trades = data.activeTrades.length > 0 ? data.activeTrades.join(', ') : '-';
+    // pokud data.activeTrades je pole objektů, iterujeme přes všechny
+    data.activeTrades.forEach(trade => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${trade.symbol}</td>
+        <td>${trade.tf}</td>
+        <td class="${trade.side}">${trade.side}</td>
+        <td class="${trade.mode || 'PAPER'}">${trade.mode || 'PAPER'}</td>
+        <td>${trade.price.toFixed(2)}</td>
+        <td>${new Date(trade.time).toLocaleTimeString()}</td>
+      `;
+      tbody.appendChild(row);
+    });
 
-    const row = document.createElement('tr');
-
-    row.innerHTML = `
-      <td>${data.currentSymbol || '-'}</td>
-      <td>${data.timeframe || '-'}</td>
-      <td class="${data.signal || ''}">${data.signal || '-'}</td>
-      <td>${trades}</td>
-      <td class="${data.mode || ''}">${data.mode || '-'}</td>
-      <td>${data.lastScan ? new Date(data.lastScan).toLocaleTimeString() : '-'}</td>
-    `;
-    
-    tbody.appendChild(row);
+    // scroll dolů na poslední řádek
+    const container = document.getElementById('tableContainer');
+    container.scrollTop = container.scrollHeight;
 
   } catch (err) {
     console.error(err);
@@ -88,8 +96,8 @@ async function loadData() {
 // inicialní načtení
 loadData();
 
-// aktualizace každých 10 sekund
-setInterval(loadData, 10000);
+// aktualizace každých 3 sekund
+setInterval(loadData, 3000);
 </script>
 </body>
 </html>
