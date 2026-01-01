@@ -1,32 +1,58 @@
 // bot.js
+require('dotenv').config()
 
-const { MODE, LOOP_INTERVAL_MS } = require("./config/env");
-const { publicGet } = require("./bybit/client");
+console.log('🚀 Starting BYBIT PORTFOLIO BOT (PAPER MODE)')
 
-async function testConnection() {
+// ====== BASIC CHECKS ======
+if (!process.env.TELEGRAM_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
+  console.error('❌ Telegram config missing')
+  process.exit(1)
+}
+
+console.log('✅ Env loaded')
+
+// ====== LOAD MODULES ======
+const masakrMode = require('./modes/masakr')
+const simulator = require('./paper/simulator')
+const sendTelegram = require('./utils/telegram')
+
+console.log('✅ Modules loaded')
+
+// ====== START BOT ======
+async function start() {
   try {
-    const res = await publicGet("/v5/market/time");
-    console.log("🟢 Bybit time OK:", res.data.result.timeSecond);
+    console.log('🧠 Initializing MASAKR MODE')
+
+    await simulator.init({
+      balance: 1000,
+      riskPerTrade: 0.01,
+      mode: 'paper'
+    })
+
+    await masakrMode.start(simulator)
+
+    await sendTelegram(`
+🤖 *BYBIT PORTFOLIO BOT STARTED*
+Mode: *PAPER*
+Strategy: *MASAKR*
+Balance: *1000 USDT*
+
+✅ All systems loaded
+⏱ Waiting for signals...
+    `)
+
+    console.log('✅ Bot running')
   } catch (err) {
-    console.error("🔴 Bybit connection FAILED");
+    console.error('🔥 START ERROR:', err)
+
+    await sendTelegram(`
+🔥 *BOT START FAILED*
+Error:
+${err.message}
+    `)
+
+    process.exit(1)
   }
 }
 
-
-// bot.js
-
-const { sendMessage } = require("./telegram/notifier");
-
-async function loop() {
-  console.log("🔄 Bot loop start | MODE:", MODE);
-  await testConnection();
-
-  // TEST zpráva do Telegramu
-  await sendMessage("🟢 Bot je online | Mode: " + MODE);
-
-  console.log("✅ Loop hotovo");
-}
-
-// start
-loop();
-setInterval(loop, LOOP_INTERVAL_MS);
+start()
