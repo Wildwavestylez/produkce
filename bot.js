@@ -1,6 +1,3 @@
-// bot.js
-require('dotenv').config()
-
 console.log('🚀 Starting BYBIT PORTFOLIO BOT (PAPER MODE)')
 
 // ====== BASIC CHECKS ======
