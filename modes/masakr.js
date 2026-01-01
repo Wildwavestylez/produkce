@@ -2,12 +2,11 @@
 
 const { getSymbols, getCloses } = require("../bybit/market");
 const { paperTrade } = require("../paper/simulator");
-
 const rsi = require("../strategies/rsi");
 
 const TIMEFRAMES = ["1", "5", "15"];
 
-async function runMasakr() {
+async function start(simulator) {   // <- přidáno
   const symbols = await getSymbols();
 
   for (const symbol of symbols) {
@@ -16,7 +15,7 @@ async function runMasakr() {
       const result = rsi.analyze(closes);
 
       if (result) {
-        paperTrade({
+        simulator.paperTrade({
           symbol,
           tf,
           strategy: result.strategy,
@@ -24,12 +23,10 @@ async function runMasakr() {
           price: result.price
         });
 
-        console.log(
-          `🧪 ${symbol} ${tf}m | ${result.strategy} | ${result.signal}`
-        );
+        console.log(`🧪 ${symbol} ${tf}m | ${result.strategy} | ${result.signal}`);
       }
     }
   }
 }
 
-module.exports = { runMasakr };
+module.exports = { start };  // <- exportujeme start
