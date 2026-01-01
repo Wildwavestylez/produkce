@@ -1,103 +1,175 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crypto Bot Dashboard</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BYBIT MASAKR – PAPER DASHBOARD</title>
+
 <style>
   body {
-    font-family: Arial, sans-serif;
-    background: #1e1e2f;
-    color: #f0f0f0;
-    padding: 20px;
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0e0e11;
+    color: #eaeaea;
   }
-  h1 { text-align: center; color: #ffcc00; }
-  #tableContainer {
-    max-height: 500px;
-    overflow-y: auto;
-    margin-top: 20px;
-    border: 1px solid #444;
+
+  header {
+    padding: 12px;
+    background: #16161d;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 10px;
   }
-  th, td {
-    padding: 8px;
-    border: 1px solid #444;
+
+  .stat {
+    background: #1b1b25;
+    padding: 10px;
+    border-radius: 10px;
     text-align: center;
     font-size: 14px;
   }
-  th { background-color: #222; position: sticky; top: 0; z-index: 1; }
-  tr:nth-child(even) { background-color: #2a2a3d; }
-  .BUY { background-color: #0f6; color: #000; font-weight: bold; }
-  .SELL { background-color: #f33; color: #fff; font-weight: bold; }
-  .PAPER { background-color: #66f; color: #fff; font-weight: bold; }
-  .LIVE { background-color: #ff0; color: #000; font-weight: bold; }
+
+  .stat span {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 5px;
+  }
+
+  .log-container {
+    padding: 10px;
+  }
+
+  .log-title {
+    margin-bottom: 6px;
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  .log {
+    background: #111118;
+    border-radius: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .trade {
+    padding: 8px;
+    border-bottom: 1px solid #222;
+    font-size: 13px;
+  }
+
+  .trade:last-child {
+    border-bottom: none;
+  }
+
+  .buy { color: #4caf50; }
+  .sell { color: #ff5252; }
+
+  .pnl-pos { color: #4caf50; font-weight: bold; }
+  .pnl-neg { color: #ff5252; font-weight: bold; }
+
+  footer {
+    padding: 8px;
+    text-align: center;
+    font-size: 11px;
+    opacity: 0.5;
+  }
 </style>
 </head>
-<body>
-<h1>Crypto Bot Dashboard</h1>
 
-<div id="tableContainer">
-  <table id="dashboardTable">
-    <thead>
-      <tr>
-        <th>Symbol</th>
-        <th>Timeframe</th>
-        <th>Signal</th>
-        <th>Mode</th>
-        <th>Price</th>
-        <th>Timestamp</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td colspan="6">Načítám data...</td></tr>
-    </tbody>
-  </table>
+<body>
+
+<header>
+🤖 BYBIT PORTFOLIO BOT – MASAKR (PAPER)
+</header>
+
+<div class="stats">
+  <div class="stat">Obchody<span id="count">0</span></div>
+  <div class="stat">Celkový PnL<span id="total">0</span></div>
+  <div class="stat">Winrate<span id="winrate">0%</span></div>
+  <div class="stat">Ziskové<span id="wins">0</span></div>
 </div>
 
+<div class="log-container">
+  <div class="log-title">📡 Live feed</div>
+  <div id="log" class="log"></div>
+</div>
+
+<footer>
+auto refresh každé 2s · paper trading
+</footer>
+
 <script>
-const JSON_URL = 'status.json';
+const logEl = document.getElementById("log");
+const countEl = document.getElementById("count");
+const totalEl = document.getElementById("total");
+const winrateEl = document.getElementById("winrate");
+const winsEl = document.getElementById("wins");
 
-async function loadData() {
+async function loadTrades() {
   try {
-    const res = await fetch(JSON_URL + '?t=' + Date.now());
-    if (!res.ok) throw new Error('Chyba při načítání JSON');
-    const data = await res.json();
+    const res = await fetch("./logs/trades.json?_=" + Date.now());
+    const trades = await res.json();
 
-    const tbody = document.querySelector('#dashboardTable tbody');
+    logEl.innerHTML = "";
 
-    // pokud data.activeTrades je pole objektů, iterujeme přes všechny
-    data.activeTrades.forEach(trade => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${trade.symbol}</td>
-        <td>${trade.tf}</td>
-        <td class="${trade.side}">${trade.side}</td>
-        <td class="${trade.mode || 'PAPER'}">${trade.mode || 'PAPER'}</td>
-        <td>${trade.price.toFixed(2)}</td>
-        <td>${new Date(trade.time).toLocaleTimeString()}</td>
+    let totalPnL = 0;
+    let wins = 0;
+
+    trades.slice().reverse().forEach(t => {
+      totalPnL += t.pnl;
+      if (t.pnl > 0) wins++;
+
+      const div = document.createElement("div");
+      div.className = "trade";
+      div.innerHTML = `
+        <div>
+          <b>${t.symbol}</b> · ${t.tf}m · ${t.strategy}
+          <span class="${t.side === "BUY" ? "buy" : "sell"}">
+            ${t.side}
+          </span>
+        </div>
+        <div>
+          entry: ${t.entry.toFixed(2)} → exit: ${t.exit.toFixed(2)}
+          |
+          <span class="${t.pnl >= 0 ? "pnl-pos" : "pnl-neg"}">
+            ${t.pnl.toFixed(3)}
+          </span>
+        </div>
       `;
-      tbody.appendChild(row);
+      logEl.appendChild(div);
     });
 
-    // scroll dolů na poslední řádek
-    const container = document.getElementById('tableContainer');
-    container.scrollTop = container.scrollHeight;
+    countEl.textContent = trades.length;
+    totalEl.textContent = totalPnL.toFixed(3);
+    winsEl.textContent = wins;
+    winrateEl.textContent = trades.length
+      ? ((wins / trades.length) * 100).toFixed(1) + "%"
+      : "0%";
 
-  } catch (err) {
-    console.error(err);
-    const tbody = document.querySelector('#dashboardTable tbody');
-    tbody.innerHTML = `<tr><td colspan="6">Chyba při načítání dat</td></tr>`;
+    // auto scroll nahoru (nejnovější)
+    logEl.scrollTop = 0;
+
+  } catch (e) {
+    console.error("Dashboard load error", e);
   }
 }
 
-// inicialní načtení
-loadData();
-
-// aktualizace každých 3 sekund
-setInterval(loadData, 3000);
+loadTrades();
+setInterval(loadTrades, 2000);
 </script>
+
 </body>
 </html>
