@@ -9,6 +9,40 @@ const sendTelegram = require('./utils/telegram')
 
 console.log('✅ Modules loaded')
 
+
+const fs = require("fs");
+const path = require("path");
+
+const STATE_PATH = path.join(__dirname, "public/state.json");
+
+function updateState(data) {
+  let state = {};
+  try {
+    state = JSON.parse(fs.readFileSync(STATE_PATH));
+  } catch {}
+
+  const newState = {
+    ...state,
+    ...data
+  };
+
+  fs.writeFileSync(STATE_PATH, JSON.stringify(newState, null, 2));
+}
+
+function log(msg) {
+  let state = {};
+  try {
+    state = JSON.parse(fs.readFileSync(STATE_PATH));
+  } catch {}
+
+  state.logs = state.logs || [];
+  state.logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
+
+  if (state.logs.length > 200) state.logs.shift();
+
+  fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
+}
+
 // ====== START BOT ======
 async function start() {
   try {
