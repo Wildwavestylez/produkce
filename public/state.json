@@ -1,0 +1,30 @@
+{
+  "status": "running",
+  "balance": 1243.52,
+  "totalProfit": 243.52,
+  "openTrades": [
+    {
+      "symbol": "BTCUSDT",
+      "side": "LONG",
+      "entry": 43250,
+      "size": 100,
+      "time": "2026-01-01 18:42:11"
+    }
+  ],
+  "closedTrades": [
+    {
+      "symbol": "ETHUSDT",
+      "side": "SHORT",
+      "entry": 2450,
+      "exit": 2412,
+      "profit": 3.42,
+      "time": "2026-01-01 18:30:02"
+    }
+  ],
+  "logs": [
+    "[18:42:11] Scanning BTCUSDT",
+    "[18:42:12] RSI oversold",
+    "[18:42:13] ENTRY LONG BTCUSDT @ 43250",
+    "[18:43:10] TP HIT +3.42 USDT"
+  ]
+}
