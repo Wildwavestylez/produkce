@@ -1,12 +1,6 @@
+// bot.js
+
 console.log('🚀 Starting BYBIT PORTFOLIO BOT (PAPER MODE)')
-
-// ====== BASIC CHECKS ======
-if (!process.env.TELEGRAM_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
-  console.error('❌ Telegram config missing')
-  process.exit(1)
-}
-
-console.log('✅ Env loaded')
 
 // ====== LOAD MODULES ======
 const masakrMode = require('./modes/masakr')
@@ -29,10 +23,10 @@ async function start() {
     await masakrMode.start(simulator)
 
     await sendTelegram(`
-🤖 *BYBIT PORTFOLIO BOT STARTED*
-Mode: *PAPER*
-Strategy: *MASAKR*
-Balance: *1000 USDT*
+🤖 BYBIT PORTFOLIO BOT STARTED
+Mode: PAPER
+Strategy: MASAKR
+Balance: 1000 USDT
 
 ✅ All systems loaded
 ⏱ Waiting for signals...
@@ -43,7 +37,7 @@ Balance: *1000 USDT*
     console.error('🔥 START ERROR:', err)
 
     await sendTelegram(`
-🔥 *BOT START FAILED*
+🔥 BOT START FAILED
 Error:
 ${err.message}
     `)
